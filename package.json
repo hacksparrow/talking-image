@@ -1,0 +1,18 @@
+{
+  "name": "talking-image",
+  "version": "0.1.0",
+  "title": "Talking Image",
+  "description": "Play audio embedded in image files",
+  "author": "Hage Yaapa <captain@hacksparrow.com>",
+  "repository": "git@github.com:hacksparrow/talking-image.git",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hacksparrow/talking-image/issues"
+  },
+  "devDependencies": {
+    "express": "*",
+    "grunt": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-concat": "*"
+  }
+}
