@@ -11,9 +11,9 @@ Talking Image is a JavaScript library for playing audio appended to GIF, JPEG, a
 
 Clone this repo and run the demo server to see the demos. Follow these instructions:
 
-  $ git clone git@github.com:hacksparrow/talking-image.git
-  $ npm install
-  $ node demo/
+  $ git clone git@github.com:hacksparrow/talking-image.git  
+  $ npm install  
+  $ node demo/  
 
 Then load [http://localhost:3000/demos.html](http://localhost:3000/demos.html).
 
@@ -21,7 +21,7 @@ If you don't want to clone the repo, download [talking-image.min.js](https://raw
 
 ## What is a talking image
 
-Talkin image refers to an image with an audio payload appended at the end of image data. Currently OGG and MP3 audio formats are supported.
+Talking image refers to an image with an audio payload appended at the end of image data. Currently OGG and MP3 audio formats are supported.
 
 ## Where can I find some talking images?
 
