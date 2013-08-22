@@ -1582,9 +1582,6 @@ window.onload = function() {
 
         // If audio data was found, embed it on the page
         if (audio.format) {
-
-          // Images to be sync should be hidden only if there is audio data
-          if (is_set('sync', options)) img.style.visibility = 'hidden';
           
           // Reset the cursor
           d.seek(0);
@@ -1648,6 +1645,9 @@ window.onload = function() {
   Array.prototype.forEach.call(talkies, function(img) {
     var options = img.getAttribute('audio'); //.split(' ');
     var url = img.getAttribute('src');
+
+    // Image and audio are to be synced - this behavior is different for the browser extension
+    if (is_set('sync', options)) img.style.visibility = 'hidden';
 
     // load the audio for this image
     render_audio(img, url, options);
