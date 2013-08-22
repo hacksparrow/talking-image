@@ -15,7 +15,7 @@ To see the demos from the repo, make sure you have Node.js installed on your sys
 
     $ git clone git@github.com:hacksparrow/talking-image.git  
     $ npm install  
-    $ node demo/  
+    $ node demos/
 
 Then load [http://localhost:3000/demos.html](http://localhost:3000/demos.html).
 
