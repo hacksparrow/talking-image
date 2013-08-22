@@ -43,7 +43,7 @@ On Windows:
 
 There are some 'clean' images and audio snippets in the `resources` directory, play around with it.
 
-**Note: ** Audio file should be appended to the image file to create a valid talking file. Reversing the order will generate a corrupted file.
+**Note:** Audio file should be appended to the image file to create a valid talking file. Reversing the order will generate a corrupted file.
 
 ## Why is it called Talking Image?
 
