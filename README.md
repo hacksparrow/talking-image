@@ -25,7 +25,7 @@ Talking image refers to an image with an audio payload appended at the end of im
 
 ## Where can I find some talking images?
 
-This project host some talking images in the [public directory under the demos directry](https://github.com/hacksparrow/talking-image/tree/master/demos/public).
+This project hosts some talking images in the [public directory](https://github.com/hacksparrow/talking-image/tree/master/demos/public) under the `demos` directry.
 
 ## How can I create talking images?
 
