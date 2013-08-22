@@ -9,7 +9,7 @@ Talking Image is a JavaScript library for playing audio appended to GIF, JPEG, a
 
 ## Give me a quick demo!
 
-Clone this repo and run the demo server to see the demos. Follow these instructions:
+Make sure you habe Node.js installed on your system. Clone this repo and run the demo server to see the demos. Follow these instructions:
 
     $ git clone git@github.com:hacksparrow/talking-image.git  
     $ npm install  
