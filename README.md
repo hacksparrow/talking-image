@@ -1,7 +1,7 @@
 Talking Image
 =============
 
-Add audio to web images with Talking Image.
+*Add audio to Web images*
 
 ## What is Talking Image?
 
