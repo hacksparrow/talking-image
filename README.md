@@ -51,7 +51,7 @@ Images on the Web have been 'mute' so far, the technique described here and the 
 
 ## Is it of any use?
 
-Now you can enjoy the audio-visual experience of Nyan Cat for infinite hours without loading a YouTube video.
+Now you can enjoy the audio-visual experience of [Nyan Cat](http://nyancatmusical.neocities.org/) for infinite hours without loading a YouTube video.
 
 ## How does it work?
 
