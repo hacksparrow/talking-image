@@ -12,6 +12,17 @@
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
+
+    <script type="text/javascript">
+      window.onload = function() {
+        if (navigator.userAgent.indexOf('Safari')) {
+          document.getElementById('ogg').remove();
+        }
+        else {
+          document.getElementById('mp3').remove();
+        }
+      }
+    </script>
   </head>
   <body>
     <div class="wrapper">
@@ -30,12 +41,12 @@
       </header>
       <section>
         <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Introducing Talking Images</h3>
+<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Nyan Cat Demo</h3>
 
 <p>
-    <p>This is not a video (Flash/HTML5). View source for proof. <small><a href="nyan-safari.html">Safari version</a></small></p>
-    <img src="nyan.gif" audio="autoplay loop volume=0.5">
-    <p><small>Powered by <a href="https://github.com/hacksparrow/talking-image">Talking Image</a></small></p>
+    <img id="mp3" src="nyan-safari.gif" audio="loop volume=0.5">
+    <img id="ogg" src="nyan.gif" audio="loop volume=0.5">
+    <p>Click on the image to hear the audio</p>
 </p>
 
 <h3>
