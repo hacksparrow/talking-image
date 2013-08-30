@@ -61,11 +61,11 @@
     <script src="javascripts/scale.fix.js"></script>
   
     <script type="text/javascript">
-      if (navigator.userAgent.indexOf('Safari') > 0) {
-        document.getElementById('ogg').remove();
+      if (navigator.userAgent.indexOf('Safari') < 0) {
+        document.getElementById('mp3').remove();
       }
       else {
-        document.getElementById('mp3').remove();
+        document.getElementById('ogg').remove();
       }
     </script>
     <script type="text/javascript" src="talking-image.min.js"></script>
