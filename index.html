@@ -60,20 +60,21 @@
     </div>
     <script src="javascripts/scale.fix.js"></script>
 
-  </body>
     <script type="text/javascript">
 
-        console.log(document.getElementById('mp3'));
-        console.log(document.getElementById('ogg'));
-
-
+        var wrong_audio;
         if (navigator.userAgent.indexOf('Safari') < 0) {
-          document.getElementById('mp3').remove();
+          wrong_audio = document.getElementById('mp3');
+          wrong_audio.parentNode.removeChild(wrong_audio);
         }
         else {
-          document.getElementById('ogg').remove();
+          wrong_audio = document.getElementById('ogg');
+          wrong_audio.parentNode.removeChild(wrong_audio);
         }
       
     </script>
     <script type="text/javascript" src="talking-image.min.js"></script>
+    
+  </body>
+
 </html>
