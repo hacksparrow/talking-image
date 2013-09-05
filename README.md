@@ -27,13 +27,13 @@ Talking image refers to an image with an audio payload appended at the end of im
 
 ## How do I add talking images to my webpage?
 
-You use the regular `<img>` tag but add an additional attribute called `audio`, in which you set the options. Eg: <img src="cool.gif" audio="autoplay loop">
+You use the regular `<img>` tag but add an additional attribute called `audio`, in which you set the options. Eg: `<img src="cool.gif" audio="autoplay loop">`.
 
 **Options for the `audio` attribute**
 
-*autoplay* - start playing the audio as soon as possible. If autoplay is not set, you will have to click on the image to start playing the sound.
-*sync* - try to sync the animation and the audio. There is no guarantee they will be in sync.
-*loop* - loop the audio
+1. *autoplay* - start playing the audio as soon as possible. If autoplay is not set, you will have to click on the image to start playing the sound.
+2. *sync* - try to sync the animation and the audio. There is no guarantee they will be in sync.
+3. *loop* - loop the audio
 
 Note: You can click on the image to mute the audio any time you want.
 
