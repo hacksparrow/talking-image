@@ -1588,10 +1588,10 @@ window.onload = function() {
           // Extract the audio data
           d.getString(audio.offset);
 
-          var audio_el = document.createElement('audio');
+          
           // Convert binary data to base64 encoded string and assign it to the audio object usind Data URL
           var audio_data = 'data:audio/'+ audio.format +';base64,' + window.btoa(d.getString());
-          audio_el.setAttribute('src', audio_data);
+          var audio_el = new Audio(audio_data);
 
           // Apply options
           if (is_set('controls', options)) audio_el.setAttribute('controls', 'controls');
@@ -1612,10 +1612,6 @@ window.onload = function() {
 
           // Add the audio element to the list of audios
           audios[url] = audio_el;
-
-          // Attach the audio element to the body
-          document.body.appendChild(audio_el);
-
 
           // The sound can be muted by clicked on the image, and toggled - we don't pause because GIF images don't pause
           img.onclick = function() {
