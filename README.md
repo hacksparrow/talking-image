@@ -37,6 +37,7 @@ On Linux / Mac:
 
     $ cat music.ogg >> funny.gif
 or  
+
     $ cat beethoven.mp3 >> welcome.jpg
 
 On Windows:
