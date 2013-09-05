@@ -36,7 +36,7 @@ The idea behind talking images is to append OGG or MP3 data to an existing image
 On Linux / Mac:
 
     $ cat music.ogg >> funny.gif
-or
+or  
     $ cat beethoven.mp3 >> welcome.jpg
 
 On Windows:
