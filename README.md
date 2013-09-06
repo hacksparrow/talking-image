@@ -40,7 +40,7 @@ Note: You can click on the image to mute the audio any time you want.
 
 ## Where can I find some talking images?
 
-This project hosts some talking images in the [public directory](https://github.com/hacksparrow/talking-image/tree/master/demos/public) under the `demos` directry.
+This project hosts some talking images in the [public directory](https://github.com/hacksparrow/talking-image/tree/master/demos/public) under the `demos` directory.
 
 ## How can I create talking images?
 
