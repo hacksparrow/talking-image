@@ -1521,6 +1521,9 @@ window.onload = function() {
     return (options.indexOf(option) > -1) ? true : false;
   }
 
+  //var mp3_signature = '\x49\x44\x33\x03\x00\x00\x00\x00';
+  //var ogg_signature = '\x4F\x67\x67\x53\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00';
+
   // Render audio for the image located at the URL
   var render_audio = function(img, url, options) {
 
@@ -1589,7 +1592,7 @@ window.onload = function() {
           d.getString(audio.offset);
 
           
-          // Convert binary data to base64 encoded string and assign it to the audio object usind Data URL
+          // Convert binary data to base64 encoded string and assign it to the audio object usind Data URI
           var audio_data = 'data:audio/'+ audio.format +';base64,' + window.btoa(d.getString());
           var audio_el = new Audio(audio_data);
 
@@ -1639,7 +1642,7 @@ window.onload = function() {
   var talkies = document.getElementsByTagName('img');
 
   Array.prototype.forEach.call(talkies, function(img) {
-    var options = img.getAttribute('audio'); //.split(' ');
+    var options = img.getAttribute('data-audio'); //.split(' ');
     var url = img.getAttribute('src');
 
     // Image and audio are to be synced - this behavior is different for the browser extension
