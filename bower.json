@@ -1,0 +1,7 @@
+{
+  "name": "talking-image",
+  "dependencies": {
+    "jdataview": "latest",
+    "jbinary": "latest"
+  }
+}

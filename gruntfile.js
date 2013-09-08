@@ -12,7 +12,7 @@ module.exports = function(grunt) {
         separator: ';'
       },
       dist: {
-        src: ['libs/jdataview.js', 'libs/jbinary.js', 'src/talking-image.js'],
+        src: ['libs/jdataview/src/jdataview.js', 'libs/jbinary/src/jbinary.js', 'src/talking-image.js'],
         dest: 'build/<%= pkg.name %>.js'
       }
     },
