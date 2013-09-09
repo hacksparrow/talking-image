@@ -7,12 +7,18 @@ module.exports = function(grunt) {
 
     pkg: grunt.file.readJSON('package.json'),
 
+    jshint: {
+      sourse: {
+        src: ['src/talking-image.js']
+      }
+    },
+
     concat: {
       options: {
         separator: ';'
       },
       dist: {
-        src: ['libs/jdataview.js', 'libs/jbinary.js', 'src/talking-image.js'],
+        src: ['libs/jdataview/src/jdataview.js', 'libs/jbinary/src/jbinary.js', 'src/talking-image.js'],
         dest: 'build/<%= pkg.name %>.js'
       }
     },
@@ -32,6 +38,7 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-uglify');
+  grunt.loadNpmTasks('grunt-contrib-jshint');
 
   grunt.registerTask('default', ['concat', 'uglify']);
 

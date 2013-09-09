@@ -172,7 +172,11 @@ jDataView.wrapBuffer = function (buffer) {
 				} else
 				if (compatibility.ArrayBuffer) {
 					if (!(buffer instanceof ArrayBuffer)) {
-						buffer = buffer instanceof Uint8Array ? buffer.buffer : new Uint8Array(buffer).buffer;
+						buffer = new Uint8Array(buffer).buffer;
+						// bug in Node.js <= 0.8:
+						if (!(buffer instanceof ArrayBuffer)) {
+							buffer = new Uint8Array(arrayFrom(buffer, true)).buffer;
+						}
 					}
 				} else
 				if (compatibility.PixelData) {
@@ -317,7 +321,7 @@ jDataView.prototype = {
 	},
 
 	_arrayAction: function (type, isReadAction, byteOffset, littleEndian, value) {
-		return isReadAction ? this['_get' + type](byteOffset, littleEndian) : this['_set' + type.replace('Uint', 'Int')](byteOffset, value, littleEndian);
+		return isReadAction ? this['_get' + type](byteOffset, littleEndian) : this['_set' + type](byteOffset, value, littleEndian);
 	},
 
 	// Helpers
@@ -370,7 +374,8 @@ jDataView.prototype = {
 		}
 		else {
 			if (this._isNodeBuffer) {
-				new Buffer(bytes).copy(this.buffer, byteOffset);
+				// workaround for Node.js v0.11.6 (`new Buffer(bufferInstance)` call corrupts original data)
+				(bytes instanceof Buffer ? bytes : new Buffer(bytes)).copy(this.buffer, byteOffset);
 			} else {
 				for (var i = 0; i < length; i++) {
 					this.buffer[byteOffset + i] = bytes[i];
@@ -383,10 +388,6 @@ jDataView.prototype = {
 
 	setBytes: function (byteOffset, bytes, littleEndian) {
 		this._setBytes(byteOffset, bytes, defined(littleEndian, true));
-	},
-
-	writeBytes: function (bytes, littleEndian) {
-		this.setBytes(undefined, bytes, littleEndian);
 	},
 
 	getString: function (byteLength, byteOffset, encoding) {
@@ -423,20 +424,12 @@ jDataView.prototype = {
 		this._setBytes(byteOffset, getCharCodes(subString), true);
 	},
 
-	writeString: function (subString, encoding) {
-		this.setString(undefined, subString, encoding);
-	},
-
 	getChar: function (byteOffset) {
 		return this.getString(1, byteOffset);
 	},
 
 	setChar: function (byteOffset, character) {
 		this.setString(byteOffset, character);
-	},
-
-	writeChar: function (character) {
-		this.setChar(undefined, character);
 	},
 
 	tell: function () {
@@ -454,6 +447,13 @@ jDataView.prototype = {
 	},
 
 	slice: function (start, end, forceCopy) {
+		function normalizeOffset(offset, byteLength) {
+			return offset < 0 ? offset + byteLength : offset;
+		}
+
+		start = normalizeOffset(start, this.byteLength);
+		end = normalizeOffset(defined(end, this.byteLength), this.byteLength);
+
 		return forceCopy
 			   ? new jDataView(this.getBytes(end - start, start, true, true), undefined, undefined, this._littleEndian)
 			   : new jDataView(this.buffer, this.byteOffset + start, end - start, this._littleEndian);
@@ -557,18 +557,13 @@ jDataView.prototype = {
 		return this._getBytes(1, byteOffset)[0];
 	},
 
-	getSigned: function (bitLength, byteOffset) {
-		var shift = 32 - bitLength;
-		return (this.getUnsigned(bitLength, byteOffset) << shift) >> shift;
-	},
-
-	getUnsigned: function (bitLength, byteOffset) {
+	_getBitRangeData: function (bitLength, byteOffset) {
 		var startBit = (defined(byteOffset, this._offset) << 3) + this._bitOffset,
 			endBit = startBit + bitLength,
 			start = startBit >>> 3,
 			end = (endBit + 7) >>> 3,
 			b = this._getBytes(end - start, start, true),
-			value = 0;
+			wideValue = 0;
 
 		/* jshint boss: true */
 		if (this._bitOffset = endBit & 7) {
@@ -576,11 +571,23 @@ jDataView.prototype = {
 		}
 
 		for (var i = 0, length = b.length; i < length; i++) {
-			value = (value << 8) | b[i];
+			wideValue = (wideValue << 8) | b[i];
 		}
 
-		value >>>= -this._bitOffset;
+		return {
+			start: start,
+			bytes: b,
+			wideValue: wideValue
+		};
+	},
 
+	getSigned: function (bitLength, byteOffset) {
+		var shift = 32 - bitLength;
+		return (this.getUnsigned(bitLength, byteOffset) << shift) >> shift;
+	},
+
+	getUnsigned: function (bitLength, byteOffset) {
+		var value = this._getBitRangeData(bitLength, byteOffset).wideValue >>> -this._bitOffset;
 		return bitLength < 32 ? (value & ~(-1 << bitLength)) : value;
 	},
 
@@ -662,19 +669,11 @@ jDataView.prototype = {
 		this._set64(Int64, byteOffset, value, littleEndian);
 	},
 
-	writeInt64: function (value, littleEndian) {
-		this.setInt64(undefined, value, littleEndian);
-	},
-
 	setUint64: function (byteOffset, value, littleEndian) {
 		this._set64(Uint64, byteOffset, value, littleEndian);
 	},
 
-	writeUint64: function (value, littleEndian) {
-		this.setUint64(undefined, value, littleEndian);
-	},
-
-	_setInt32: function (byteOffset, value, littleEndian) {
+	_setUint32: function (byteOffset, value, littleEndian) {
 		this._setBytes(byteOffset, [
 			value & 0xff,
 			(value >>> 8) & 0xff,
@@ -683,15 +682,31 @@ jDataView.prototype = {
 		], littleEndian);
 	},
 
-	_setInt16: function (byteOffset, value, littleEndian) {
+	_setUint16: function (byteOffset, value, littleEndian) {
 		this._setBytes(byteOffset, [
 			value & 0xff,
 			(value >>> 8) & 0xff
 		], littleEndian);
 	},
 
-	_setInt8: function (byteOffset, value) {
+	_setUint8: function (byteOffset, value) {
 		this._setBytes(byteOffset, [value & 0xff]);
+	},
+
+	setUnsigned: function (byteOffset, value, bitLength) {
+		var data = this._getBitRangeData(bitLength, byteOffset),
+			wideValue = data.wideValue,
+			b = data.bytes;
+
+		wideValue &= ~(~(-1 << bitLength) << -this._bitOffset); // clearing bit range before binary "or"
+		wideValue |= (bitLength < 32 ? (value & ~(-1 << bitLength)) : value) << -this._bitOffset; // setting bits
+
+		for (var i = b.length - 1; i >= 0; i--) {
+			b[i] = wideValue & 0xff;
+			wideValue >>>= 8;
+		}
+
+		this._setBytes(data.start, b, true);
 	}
 };
 
@@ -705,19 +720,36 @@ for (var type in dataTypes) {
 		proto['set' + type] = function (byteOffset, value, littleEndian) {
 			this._action(type, false, byteOffset, littleEndian, value);
 		};
-		proto['write' + type] = function (value, littleEndian) {
-			this['set' + type](undefined, value, littleEndian);
-		};
 	})(type);
 }
 
-if (typeof module === 'object' && module && typeof module.exports === 'object') {
+proto._setInt32 = proto._setUint32;
+proto._setInt16 = proto._setUint16;
+proto._setInt8 = proto._setUint8;
+proto.setSigned = proto.setUnsigned;
+
+for (var method in proto) {
+	if (method.slice(0, 3) === 'set') {
+		(function (type) {
+			proto['write' + type] = function () {
+				Array.prototype.unshift.call(arguments, undefined);
+				this['set' + type].apply(this, arguments);
+			};
+		})(method.slice(3));
+	}
+}
+
+if (typeof module !== 'undefined' && typeof module.exports === 'object') {
 	module.exports = jDataView;
 } else
 if (typeof define === 'function' && define.amd) {
 	define([], function () { return jDataView });
 } else {
-	global.jDataView = jDataView;
+	var oldGlobal = global.jDataView;
+	(global.jDataView = jDataView).noConflict = function () {
+		global.jDataView = oldGlobal;
+		return this;
+	};
 }
 
 })((function () { /* jshint strict: false */ return this })());;(function (global) {
@@ -730,11 +762,8 @@ if (!('atob' in global) || !('btoa' in global)) {
 (function(){var t=global,r="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n=function(){try{document.createElement("$")}catch(t){return t}}();t.btoa||(t.btoa=function(t){for(var o,e,a=0,c=r,f="";t.charAt(0|a)||(c="=",a%1);f+=c.charAt(63&o>>8-8*(a%1))){if(e=t.charCodeAt(a+=.75),e>255)throw n;o=o<<8|e}return f}),t.atob||(t.atob=function(t){if(t=t.replace(/=+$/,""),1==t.length%4)throw n;for(var o,e,a=0,c=0,f="";e=t.charAt(c++);~e&&(o=a%4?64*o+e:e,a++%4)?f+=String.fromCharCode(255&o>>(6&-2*a)):0)e=r.indexOf(e);return f})})();
 }
 
-function hasNodeRequire(name) {
-	return typeof require === 'function' && !require.isBrowser && require(name);
-}
-
-var jDataView;
+var hasNodeRequire = typeof require === 'function' && !('window' in global) ? require : function () {},
+	jDataView;
 
 function extend(obj) {
 	for (var i = 1, length = arguments.length; i < length; ++i) {
@@ -764,6 +793,10 @@ function toValue(obj, binary, value) {
 }
 
 function jBinary(view, typeSet) {
+	if (view instanceof jBinary) {
+		return view.as(typeSet);
+	}
+
 	/* jshint validthis:true */
 	if (!(view instanceof jDataView)) {
 		view = new jDataView(view, undefined, undefined, typeSet ? typeSet['jBinary.littleEndian'] : undefined);
@@ -775,13 +808,9 @@ function jBinary(view, typeSet) {
 	
 	this.view = view;
 	this.view.seek(0);
-	this._bitShift = 0;
 	this.contexts = [];
-	
-	if (typeSet) {
-		this.typeSet = (proto.typeSet === typeSet || proto.typeSet.isPrototypeOf(typeSet)) ? typeSet : inherit(proto.typeSet, typeSet);
-		this.cacheKey = this._getCached(typeSet, function () { return proto.cacheKey + '.' + (++proto.id) }, true);
-	}
+
+	return this.as(typeSet, true);
 }
 
 var proto = jBinary.prototype;
@@ -1087,61 +1116,10 @@ proto.typeSet = {
 	'bitfield': jBinary.Type({
 		params: ['bitSize'],
 		read: function () {
-			var bitSize = this.bitSize,
-				binary = this.binary,
-				fieldValue = 0;
-
-			if (binary._bitShift < 0 || binary._bitShift >= 8) {
-				var byteShift = binary._bitShift >> 3; // Math.floor(_bitShift / 8)
-				binary.skip(byteShift);
-				binary._bitShift &= 7; // _bitShift + 8 * Math.floor(_bitShift / 8)
-			}
-			if (binary._bitShift > 0 && bitSize >= 8 - binary._bitShift) {
-				fieldValue = binary.view.getUint8() & ~(-1 << (8 - binary._bitShift));
-				bitSize -= 8 - binary._bitShift;
-				binary._bitShift = 0;
-			}
-			while (bitSize >= 8) {
-				fieldValue = binary.view.getUint8() | (fieldValue << 8);
-				bitSize -= 8;
-			}
-			if (bitSize > 0) {
-				fieldValue = ((binary.view.getUint8() >>> (8 - (binary._bitShift + bitSize))) & ~(-1 << bitSize)) | (fieldValue << bitSize);
-				binary._bitShift += bitSize - 8; // passing negative value for next pass
-			}
-
-			return fieldValue >>> 0;
+			return this.binary.view.getUnsigned(this.bitSize);
 		},
 		write: function (value) {
-			var bitSize = this.bitSize,
-				binary = this.binary,
-				pos,
-				curByte;
-
-			if (binary._bitShift < 0 || binary._bitShift >= 8) {
-				var byteShift = binary._bitShift >> 3; // Math.floor(_bitShift / 8)
-				binary.skip(byteShift);
-				binary._bitShift &= 7; // _bitShift + 8 * Math.floor(_bitShift / 8)
-			}
-			if (binary._bitShift > 0 && bitSize >= 8 - binary._bitShift) {
-				pos = binary.tell();
-				curByte = binary.view.getUint8(pos) & (-1 << (8 - binary._bitShift));
-				curByte |= value >>> (bitSize - (8 - binary._bitShift));
-				binary.view.setUint8(pos, curByte);
-				bitSize -= 8 - binary._bitShift;
-				binary._bitShift = 0;
-			}
-			while (bitSize >= 8) {
-				binary.view.writeUint8((value >>> (bitSize - 8)) & 0xff);
-				bitSize -= 8;
-			}
-			if (bitSize > 0) {
-				pos = binary.tell();
-				curByte = binary.view.getUint8(pos) & ~(~(-1 << bitSize) << (8 - (binary._bitShift + bitSize)));
-				curByte |= (value & ~(-1 << bitSize)) << (8 - (binary._bitShift + bitSize));
-				binary.view.setUint8(pos, curByte);
-				binary._bitShift += bitSize - 8; // passing negative value for next pass
-			}
+			this.binary.view.writeUnsigned(value, this.bitSize);
 		}
 	}),
 	'if': jBinary.Template({
@@ -1203,11 +1181,10 @@ proto.typeSet = {
 	}),
 	'lazy': jBinary.Template({
 		marker: 'jBinary.Lazy',
-		params: ['innerType'],
-		setParams: function (innerType, length) {
-			this.baseType = ['binary', length];
+		params: ['innerType', 'length'],
+		getBaseType: function () {
+			return ['binary', this.length, this.binary.typeSet];
 		},
-		typeParams: ['innerType'],
 		read: function () {
 			var accessor = function (newValue) {
 				if (arguments.length === 0) {
@@ -1223,7 +1200,9 @@ proto.typeSet = {
 			};
 			accessor[this.marker] = true;
 			return extend(accessor, {
-				binary: this.baseRead(),
+				binary: extend(this.baseRead(), {
+					contexts: this.binary.contexts.slice()
+				}),
 				innerType: this.innerType
 			});
 		},
@@ -1237,6 +1216,15 @@ proto.typeSet = {
 			}
 		}
 	})
+};
+
+proto.as = function (typeSet, modifyOriginal) {
+	var binary = modifyOriginal ? this : inherit(this);
+	typeSet = typeSet || proto.typeSet;
+	binary.typeSet = (proto.typeSet === typeSet || proto.typeSet.isPrototypeOf(typeSet)) ? typeSet : inherit(proto.typeSet, typeSet);
+	binary.cacheKey = proto.cacheKey;
+	binary.cacheKey = binary._getCached(typeSet, function () { return proto.cacheKey + '.' + (++proto.id) }, true);
+	return binary;
 };
 
 var dataTypes = [
@@ -1348,12 +1336,24 @@ proto.read = function (type, offset) {
 	);
 };
 
+proto.readAll = function () {
+	return this.read('jBinary.all', 0);
+};
+
 proto.write = function (type, data, offset) {
-	this._action(
+	return this._action(
 		type,
 		offset,
-		function () { this.createProperty(type).write(data, this.contexts[0]) }
+		function () {
+			var start = this.tell();
+			this.createProperty(type).write(data, this.contexts[0]);
+			return this.tell() - start;
+		}
 	);
+};
+
+proto.writeAll = function (data) {
+	return this.write('jBinary.all', data, 0);
 };
 
 proto._toURI =
@@ -1368,7 +1368,7 @@ proto._toURI =
 	};
 
 proto.toURI = function (mimeType) {
-	return this._toURI(mimeType || this.typeSet['jBinary.mimeType']);
+	return this._toURI(mimeType || this.typeSet['jBinary.mimeType'] || 'application/octet-stream');
 };
 
 proto.slice = function (start, end, forceCopy) {
@@ -1439,9 +1439,13 @@ jBinary.loadData = function (source, callback) {
 				};
 			}
 
-			xhr.onload = function() {
+			var cbError = function (string) {
+				callback(new Error(string));
+			};
+
+			xhr.onload = function () {
 				if (this.status !== 0 && this.status !== 200) {
-					return callback(new Error('HTTP Error #' + this.status + ': ' + this.statusText));
+					return cbError('HTTP Error #' + this.status + ': ' + this.statusText);
 				}
 
 				// emulating response field for IE9
@@ -1452,7 +1456,11 @@ jBinary.loadData = function (source, callback) {
 				callback(null, this.response);
 			};
 
-			xhr.send();
+			xhr.onerror = function () {
+				cbError('Network error.');
+			};
+
+			xhr.send(null);
 		} else {
 			var isHTTP = /^(https?):\/\//.test(source);
 
@@ -1477,25 +1485,36 @@ jBinary.loadData = function (source, callback) {
 	}
 };
 
-function setJDataView(_jDataView) {
-	jDataView = _jDataView;
-	jDataView.prototype.toBinary = function (typeSet) {
+jBinary.load = function (source, typeSet, callback) {
+	if (arguments.length < 3) {
+		callback = typeSet;
+		typeSet = undefined;
+	}
+	
+	jBinary.loadData(source, function (err, data) {
+		/* jshint expr: true */
+		err ? callback(err) : callback(null, new jBinary(data, typeSet));
+	});
+};
+
+function getJBinary(_jDataView) {
+	(jDataView = _jDataView).prototype.toBinary = function (typeSet) {
 		return new jBinary(this, typeSet);
 	};
+	return jBinary;
 }
 
-if (typeof module === 'object' && module && typeof module.exports === 'object') {
-	setJDataView(require('jdataview'));
-	module.exports = jBinary;
+if (typeof module !== 'undefined' && typeof module.exports === 'object') {
+	module.exports = getJBinary(require('jdataview'));
 } else
 if (typeof define === 'function' && define.amd) {
-	define(['jdataview'], function (_jDataView) {
-		setJDataView(_jDataView);
-		return jBinary;
-	});
+	define(['jdataview'], getJBinary);
 } else {
-	setJDataView(global.jDataView);
-	global.jBinary = jBinary;
+	var oldGlobal = global.jBinary;
+	(global.jBinary = getJBinary(global.jDataView)).noConflict = function () {
+		global.jBinary = oldGlobal;
+		return this;
+	};
 }
 
 })((function () { /* jshint strict: false */ return this })());
@@ -1504,157 +1523,104 @@ if (typeof define === 'function' && define.amd) {
 * License: MIT                                           *
 **********************************************************/
 
-'use strict';
+/*jshint newcap: false */
 
-// Made available for other libs and browser extensions to detect Talking Image
-var TALKING_IMAGE_VERSION = '0.1.0';
+;(function(TalkingImage, global) {
 
-(function() {
+  global.TalkingImage = TalkingImage;
 
-window.onload = function() {
-
-  // Object to keep the references to various audio objects - key is the URL, and the value is the audio element
-  var audios = {};
-
-  // Check if an audio option is set
-  var is_set = function(option, options) {
-    return (options.indexOf(option) > -1) ? true : false;
-  }
-
-  //var mp3_signature = '\x49\x44\x33\x03\x00\x00\x00\x00';
-  //var ogg_signature = '\x4F\x67\x67\x53\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00';
-
-  // Render audio for the image located at the URL
-  var render_audio = function(img, url, options) {
-
-    jBinary.loadData(url, function(err, data) {
-
-      // Proceed only if the image was loaded successfully
-      if (!err) {
-
-          var d = new jDataView(data);
-          // We will use this object for storing relevant information about the audio
-          var audio = {
-            format: false,
-            offset: false,
-            volume: 1,
-          }
-
-          // Let's read the binary data and look for embedded audio
-          var i = 0;
-          while (i < d.byteLength) {
-
-            // Detect mp3 data
-            if (d.getChar(i) == '\x49'
-              && d.getChar(i+1) == '\x44' 
-              && d.getChar(i+2) == '\x33'
-              && d.getChar(i+3) == '\x03'
-              && d.getChar(i+4) == '\x00'
-              && d.getChar(i+5) == '\x00'
-              && d.getChar(i+6) == '\x00'
-              && d.getChar(i+7) == '\x00'
-              ) {
-                audio.format = 'mpeg';
-                audio.offset = i;
-                break;
-            }
-            // Detect ogg data
-            else if (d.getChar(i) == '\x4F'
-              && d.getChar(i+1) == '\x67' 
-              && d.getChar(i+2) == '\x67'
-              && d.getChar(i+3) == '\x53'
-              && d.getChar(i+4) == '\x00'
-              && d.getChar(i+5) == '\x02'
-              && d.getChar(i+6) == '\x00'
-              && d.getChar(i+7) == '\x00'
-              && d.getChar(i+8) == '\x00'
-              && d.getChar(i+9) == '\x00'
-              && d.getChar(i+10) == '\x00'
-              && d.getChar(i+11) == '\x00'
-              && d.getChar(i+12) == '\x00'
-              && d.getChar(i+13) == '\x00'
-              ) {
-              
-                audio.format = 'ogg';
-                audio.offset = i;
-                break;
-          }
-
-          i++;
-        }
-
-        // If audio data was found, embed it on the page
-        if (audio.format) {
-          
-          // Reset the cursor
-          d.seek(0);
-          // Extract the audio data
-          d.getString(audio.offset);
-
-          
-          // Convert binary data to base64 encoded string and assign it to the audio object usind Data URI
-          var audio_data = 'data:audio/'+ audio.format +';base64,' + window.btoa(d.getString());
-          var audio_el = new Audio(audio_data);
-
-          // Apply options
-          if (is_set('controls', options)) audio_el.setAttribute('controls', 'controls');
-          if (is_set('autoplay', options)) audio_el.setAttribute('autoplay', 'true');
-          if (is_set('loop', options)) audio_el.setAttribute('loop', 'true');
-          if (is_set('volume', options)) {
-            var volume = options.split('volume=')[1].split(' ')[0];
-            // We are prefxing with + to convert string to int
-            audio.volume = +volume;
-            audio_el.volume = +volume;
-          }
-
-          if (is_set('sync', options)) {
-            // Reset the animation by re-loading the image
-            img.setAttribute('src', url);
-            img.style.visibility = 'visible';
-          }
-
-          // Add the audio element to the list of audios
-          audios[url] = audio_el;
-
-          // The sound can be muted by clicked on the image, and toggled - we don't pause because GIF images don't pause
-          img.onclick = function() {
-
-            var audio_el = audios[img.getAttribute('src')];
-
-            if (audio_el.paused) { audio_el.play(); }
-            else {
-              var audio_el = audios[img.getAttribute('src')];
-              if (audio_el.volume == 0) audio_el.volume = audio.volume;
-              else audio_el.volume = 0;
-            }
-            
-          }
-
-        }
-
-      }
-
+  window.addEventListener('load', function() {
+    var images = document.querySelectorAll('img[data-audio]');
+    Array.prototype.forEach.call(images, function(image) {
+      TalkingImage(image);
     });
-  }
-
-
-  // Let's inspect all the images in the document for potential 'talkies'
-  var talkies = document.getElementsByTagName('img');
-
-  Array.prototype.forEach.call(talkies, function(img) {
-    var options = img.getAttribute('data-audio'); //.split(' ');
-    var url = img.getAttribute('src');
-
-    // Image and audio are to be synced - this behavior is different for the browser extension
-    if (is_set('sync', options)) img.style.visibility = 'hidden';
-
-    // load the audio for this image
-    render_audio(img, url, options);
   });
 
+})(function(img) {
 
-};
+  'use strict';
 
+  var
 
+  VERSION = '0.1.0',
+  hasOwnProp = Object.prototype.hasOwnProperty,
 
-})();
+  audio = { volume: 1 },
+
+  formats = {
+    'mp3': '\x49\x44\x33\x03\x00\x00\x00\x00',
+    'ogg': '\x4F\x67\x67\x53\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
+  },
+
+  url = img.getAttribute('src'),
+  options = img.getAttribute('data-audio'),
+
+  is_set = function(option, options) {
+    return options.indexOf(option) > -1;
+  },
+
+  detectFormat = function(d) {
+    var i, ii, j, n, format;
+    for (i = 0, ii = d.byteLength; i < ii; i++) {
+      for (j in formats) {
+        format = true;
+        if (hasOwnProp.call(formats, j) && formats[j].length + i < ii) {
+          for (n = 0; n < formats[j].length; n++) {
+            if (d.getChar(i + n) !== formats[j][n]) {
+              format = false;
+              break;
+            }
+          }
+          if (format) {
+            audio.format = j;
+            audio.offset = i;
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  jBinary.loadData(url, function(err, data) {
+    var d = new jDataView(data);
+    if (!err && detectFormat(d)) {
+      // Reset the cursor
+      d.seek(0);
+      // Extract the audio data
+      d.getString(audio.offset);
+      // Convert binary data to base64 encoded string and assign it to the audio object usind Data URI
+      var audio_data = 'data:audio/'+ audio.format +';base64,' + window.btoa(d.getString());
+      var audio_el = new Audio(audio_data);
+
+      if (is_set('sync', options)) img.style.visibility = 'hidden';
+
+      // Apply options
+      if (is_set('controls', options)) audio_el.setAttribute('controls', 'controls');
+      if (is_set('autoplay', options)) audio_el.setAttribute('autoplay', 'true');
+      if (is_set('loop', options)) audio_el.setAttribute('loop', 'true');
+      if (is_set('volume', options)) {
+        var volume = options.split('volume=')[1].split(' ')[0];
+        // We are prefxing with + to convert string to int
+        audio.volume = +volume;
+        audio_el.volume = +volume;
+      }
+
+      if (is_set('sync', options)) {
+        // Reset the animation by re-loading the image
+        img.setAttribute('src', url);
+        img.style.visibility = 'visible';
+      }
+
+      // The sound can be muted by clicked on the image, and toggled - we don't pause because GIF images don't pause
+      img.addEventListener('click', function() {
+        if (audio_el.paused) { 
+          audio_el.play(); 
+        } else {
+          audio_el.volume = audio_el.volume === 0 ? audio_el.volume = audio.volume : 0;
+        }
+      });
+    }
+  });
+
+}, this);

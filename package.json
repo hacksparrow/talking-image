@@ -13,6 +13,7 @@
     "express": "*",
     "grunt": "*",
     "grunt-contrib-uglify": "*",
-    "grunt-contrib-concat": "*"
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-jshint": "*"
   }
 }
