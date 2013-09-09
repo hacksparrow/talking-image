@@ -3,6 +3,8 @@
 * License: MIT                                           *
 **********************************************************/
 
+/*jshint newcap: false */
+
 ;(function(TalkingImage, global) {
 
   global.TalkingImage = TalkingImage;

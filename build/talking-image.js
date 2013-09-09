@@ -1523,6 +1523,8 @@ if (typeof define === 'function' && define.amd) {
 * License: MIT                                           *
 **********************************************************/
 
+/*jshint newcap: false */
+
 ;(function(TalkingImage, global) {
 
   global.TalkingImage = TalkingImage;
