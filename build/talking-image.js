@@ -1530,8 +1530,10 @@ if (typeof define === 'function' && define.amd) {
   global.TalkingImage = TalkingImage;
 
   window.addEventListener('load', function() {
-    var img = document.querySelector('img');
-    TalkingImage(img);
+    var images = document.querySelectorAll('img[data-audio]');
+    Array.prototype.forEach.call(images, function(image) {
+      TalkingImage(image);
+    });
   });
 
 })(function(img) {
